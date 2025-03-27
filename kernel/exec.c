@@ -49,6 +49,33 @@ exec(char *path, char **argv)
   if((pagetable = proc_pagetable(p)) == 0)
     goto bad;
 
+  // Check "--print_pagetable"
+  int print_pagetable = 0;
+  int new_argc = 0;
+  char *new_argv[MAXARG];
+  
+  for (int i = 0; argv[i] != 0; i++) {
+      char *arg = argv[i];
+      char *opt = "--print_pagetable";
+      int j = 0;
+  
+      // strcmp(argv[i], opt)
+      while (arg[j] == opt[j] && arg[j] != '\0' && opt[j] != '\0') {
+          j++;
+      }
+  
+      if (arg[j] == '\0' && opt[j] == '\0') { 
+          print_pagetable = 1;
+      } else {
+          new_argv[new_argc++] = argv[i];
+      }
+  }
+  new_argv[new_argc] = 0; 
+  
+  // Delete "--print_pagetable" so it dont affect arguments when load program
+  argv = new_argv;
+  argc = new_argc;
+
   // Load program into memory.
   for(i=0, off=elf.phoff; i<elf.phnum; i++, off+=sizeof(ph)){
     if(readi(ip, 0, (uint64)&ph, off, sizeof(ph)) != sizeof(ph))
@@ -127,7 +154,11 @@ exec(char *path, char **argv)
   p->trapframe->epc = elf.entry;  // initial program counter = main
   p->trapframe->sp = sp; // initial stack pointer
   proc_freepagetable(oldpagetable, oldsz);
-
+  
+  if (print_pagetable) {
+    vmprint(pagetable);
+  }
+  
   return argc; // this ends up in a0, the first argument to main(argc, argv)
 
  bad:

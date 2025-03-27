@@ -1,0 +1,156 @@
+1. Print a page table
+ - In vm.c 
+ void vmprint_helper(pagetable_t pagetable, int level) {
+  if (pagetable == 0)
+      return;
+  
+  for (int i = 0; i < PGSIZE / sizeof(pte_t); i++) {
+      pte_t pte = pagetable[i];
+      if (pte & PTE_V) { // Only print valid PTEs
+          uint64 pa = PTE2PA(pte);
+          
+          // Print indentation based on level
+          for (int j = 0; j < level; j++)
+                printf(" ..");
+
+           printf("%d: pte %p pa %p\n", i, (void *)pte, (void *)pa);
+          
+          if ((pte & (PTE_R | PTE_W | PTE_X)) == 0) { // If it's an intermediate page table
+              vmprint_helper((pagetable_t)pa, level + 1);
+          }
+      }
+  }
+}
+void vmprint(pagetable_t pagetable) {
+  printf("page table %p\n", pagetable);
+  vmprint_helper(pagetable, 1);
+}
+
+- In exec.c
+Add this before load program into memmory
+
+// Check "--print_pagetable"
+  int print_pagetable = 0;
+  int new_argc = 0;
+  char *new_argv[MAXARG];
+  
+  for (int i = 0; argv[i] != 0; i++) {
+      char *arg = argv[i];
+      char *opt = "--print_pagetable";
+      int j = 0;
+  
+      // strcmp(argv[i], opt)
+      while (arg[j] == opt[j] && arg[j] != '\0' && opt[j] != '\0') {
+          j++;
+      }
+  
+      if (arg[j] == '\0' && opt[j] == '\0') { 
+          print_pagetable = 1;
+      } else {
+          new_argv[new_argc++] = argv[i];
+      }
+  }
+  new_argv[new_argc] = 0; 
+  
+  // Delete "--print_pagetable" so it dont affect arguments when load program
+  argv = new_argv;
+  argc = new_argc;
+
+
+Add this before return argc
+
+  if (print_pagetable) {
+    vmprint(pagetable);
+  }
+
+- Khai báo vnprint ở defs (này có sẵn rồi)
+- Muốn in pagetable: lệnh muốn chạy --print_pagetable
+
+2. Detect which pages have been accessed 
+- In riscv.h:
+#define PTE_A (1L << 6): lấy cờ - Accessed A ở vị trí thứ 6 trong dchi logic
+(coi trong sách trang 33)
+ 
+------------ Thêm system call như lab trước
+- In syscall.c: 
+extern uint64 sys_pgaccess(void);
+...
+[SYS_pgaccess] sys_pgaccess,
+
+- In syscall.h: 
+#define SYS_pgaccess  35
+
+- In sysproc.c:
+uint64 sys_pgaccess(void) {
+  uint64 start_addr; // Địa chỉ ảo bắt đầu
+  int num_pages;     // Số trang cần kiểm tra
+  uint64 user_mask;  // Địa chỉ user để lưu kết quả
+
+  // Lấy tham số từ user space
+  argaddr(0, &start_addr);
+  argint(1, &num_pages);
+  argaddr(2, &user_mask);
+
+  // Giới hạn số trang để tránh ảnh hưởng hiệu suất
+  if (num_pages <= 0 || num_pages > 64)
+      return -1;
+
+  struct proc *p = myproc();
+  uint64 mask = 0; // Lưu kết quả bitmask
+
+  // Kiểm tra từng trang
+  for (int i = 0; i < num_pages; i++) {
+      pagetable_t pagetable = p->pagetable;
+      uint64 va = start_addr + i * PGSIZE; // Tính địa chỉ trang
+
+      pte_t *pte = walk(pagetable, va, 0);
+      if (pte == 0 || (*pte & PTE_V) == 0) // Nếu không có trang hợp lệ
+          continue;
+
+      if (*pte & PTE_A) { // Nếu trang đã được truy cập
+          mask |= (1UL << i); // Ghi nhận vào bitmask
+          *pte &= ~PTE_A; // Xóa bit PTE_A để reset trạng thái
+      }
+  }
+
+  // Copy bitmask từ kernel về user space
+  if (copyout(p->pagetable, user_mask, (char *)&mask, sizeof(mask)) < 0)
+      return -1;
+
+  return 0; // Thành công
+}
+
+- In user.h:
+int pgaccess(void *start, int num_pages, uint64 *mask);
+
+- In usys.pl:
+entry("pgaccess");
+
+- In pgtbltest.c k thấy hàm, tự viết: 
+void pgaccess_test() {
+  printf("pgaccess_test starting\n");
+  testname = "pgaccess_test";
+
+  int num_pages = 5;
+  uint64 mask = 0;
+  
+  // Allocate memory for at least `num_pages`
+  char *buf = sbrk(num_pages * PGSIZE);
+  if (buf == (char*)-1)
+    err("sbrk failed");
+
+  // Touch some pages to set the access bit
+  buf[0] = 1;                   // Page 0
+  buf[PGSIZE * 2] = 2;          // Page 2
+  buf[PGSIZE * 4] = 3;          // Page 4
+
+  // Call pgaccess to check accessed pages
+  if (pgaccess(buf, num_pages, &mask) < 0)
+    err("pgaccess syscall failed");
+
+  // Expected bitmask: 0b10101 (Page 0, 2, and 4 accessed)
+  if (mask != 0b10101)
+    err("bitmask incorrect");
+
+  printf("pgaccess_test: OK\n");
+}

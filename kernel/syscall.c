@@ -101,6 +101,7 @@ extern uint64 sys_unlink(void);
 extern uint64 sys_link(void);
 extern uint64 sys_mkdir(void);
 extern uint64 sys_close(void);
+extern uint64 sys_pgaccess(void);
 
 #ifdef LAB_NET
 extern uint64 sys_bind(void);
@@ -147,6 +148,7 @@ static uint64 (*syscalls[])(void) = {
 [SYS_pgpte] sys_pgpte,
 [SYS_kpgtbl] sys_kpgtbl,
 #endif
+[SYS_pgaccess] sys_pgaccess,
 };
 
 

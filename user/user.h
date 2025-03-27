@@ -55,6 +55,7 @@ void *memcpy(void *, const void *, uint);
 #ifdef LAB_LOCK
 int statistics(void*, int);
 #endif
+int pgaccess(void *start, int num_pages, uint64 *mask);
 
 // umalloc.c
 void* malloc(uint);

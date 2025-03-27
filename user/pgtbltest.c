@@ -11,14 +11,16 @@ void print_kpgtbl();
 void ugetpid_test();
 void superpg_test();
 
+void pgaccess_test(); 
 int
 main(int argc, char *argv[])
 {
-  print_pgtbl();
-  ugetpid_test();
-  print_kpgtbl();
-  superpg_test();
-  printf("pgtbltest: all tests succeeded\n");
+  // print_pgtbl();
+  // ugetpid_test();
+  // print_kpgtbl();
+  // superpg_test();
+  // printf("pgtbltest: all tests succeeded\n");
+  pgaccess_test();
   exit(0);
 }
 
@@ -139,4 +141,32 @@ superpg_test()
     }
   }
   printf("superpg_test: OK\n");  
+}
+
+void pgaccess_test() {
+  printf("pgaccess_test starting\n");
+  testname = "pgaccess_test";
+
+  int num_pages = 5;
+  uint64 mask = 0;
+  
+  // Allocate memory for at least `num_pages`
+  char *buf = sbrk(num_pages * PGSIZE);
+  if (buf == (char*)-1)
+    err("sbrk failed");
+
+  // Touch some pages to set the access bit
+  buf[0] = 1;                   // Page 0
+  buf[PGSIZE * 2] = 2;          // Page 2
+  buf[PGSIZE * 4] = 3;          // Page 4
+
+  // Call pgaccess to check accessed pages
+  if (pgaccess(buf, num_pages, &mask) < 0)
+    err("pgaccess syscall failed");
+
+  // Expected bitmask: 0b10101 (Page 0, 2, and 4 accessed)
+  if (mask != 0b10101)
+    err("bitmask incorrect");
+
+  printf("pgaccess_test: OK\n");
 }

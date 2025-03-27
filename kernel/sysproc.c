@@ -123,3 +123,41 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+uint64 sys_pgaccess(void) {
+  uint64 start_addr; // Địa chỉ ảo bắt đầu
+  int num_pages;     // Số trang cần kiểm tra
+  uint64 user_mask;  // Địa chỉ user để lưu kết quả
+
+  // Lấy tham số từ user space
+  argaddr(0, &start_addr);
+  argint(1, &num_pages);
+  argaddr(2, &user_mask);
+
+  // Giới hạn số trang để tránh ảnh hưởng hiệu suất
+  if (num_pages <= 0 || num_pages > 64)
+      return -1;
+
+  struct proc *p = myproc();
+  uint64 mask = 0; // Lưu kết quả bitmask
+
+  // Kiểm tra từng trang
+  for (int i = 0; i < num_pages; i++) {
+      pagetable_t pagetable = p->pagetable;
+      uint64 va = start_addr + i * PGSIZE; // Tính địa chỉ trang
+
+      pte_t *pte = walk(pagetable, va, 0);
+      if (pte == 0 || (*pte & PTE_V) == 0) // Nếu không có trang hợp lệ
+          continue;
+
+      if (*pte & PTE_A) { // Nếu trang đã được truy cập
+          mask |= (1UL << i); // Ghi nhận vào bitmask
+          *pte &= ~PTE_A; // Xóa bit PTE_A để reset trạng thái
+      }
+  }
+
+  // Copy bitmask từ kernel về user space
+  if (copyout(p->pagetable, user_mask, (char *)&mask, sizeof(mask)) < 0)
+      return -1;
+
+  return 0; // Thành công
+}
