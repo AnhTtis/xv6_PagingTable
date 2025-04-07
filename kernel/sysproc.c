@@ -151,6 +151,8 @@ uint64 sys_pgaccess(void) {
 
       if (*pte & PTE_A) { // Nếu trang đã được truy cập
           mask |= (1UL << i); // Ghi nhận vào bitmask
+          // In thông tin về trang đã được truy cập
+          printf("[pgaccess] Page %d accessed (va = 0x%lx)\n", i, va);
           *pte &= ~PTE_A; // Xóa bit PTE_A để reset trạng thái
       }
   }

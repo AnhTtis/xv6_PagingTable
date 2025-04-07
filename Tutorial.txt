@@ -64,7 +64,7 @@ Add this before return argc
   }
 
 - Khai báo vnprint ở defs (này có sẵn rồi)
-- Muốn in pagetable: lệnh muốn chạy --print_pagetable
+- Muốn in pagetable: lệnh muốn chạy init --print_pagetable
 
 2. Detect which pages have been accessed 
 - In riscv.h:
@@ -109,6 +109,10 @@ uint64 sys_pgaccess(void) {
 
       if (*pte & PTE_A) { // Nếu trang đã được truy cập
           mask |= (1UL << i); // Ghi nhận vào bitmask
+
+          //In ra để kiểm tra
+          printf("[pgaccess] Page %d accessed (va = 0x%lx)\n", i, va);
+
           *pte &= ~PTE_A; // Xóa bit PTE_A để reset trạng thái
       }
   }

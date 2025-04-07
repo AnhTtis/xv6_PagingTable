@@ -515,8 +515,6 @@ void vmprint(pagetable_t pagetable) {
 }
 #endif
 
-
-
 #ifdef LAB_PGTBL
 pte_t*
 pgpte(pagetable_t pagetable, uint64 va) {
