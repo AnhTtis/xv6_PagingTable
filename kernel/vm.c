@@ -486,8 +486,6 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
   }
 }
 
-
-#ifdef LAB_PGTBL
 void vmprint_helper(pagetable_t pagetable, int level) {
   if (pagetable == 0)
       return;
@@ -513,7 +511,6 @@ void vmprint(pagetable_t pagetable) {
   printf("page table %p\n", pagetable);
   vmprint_helper(pagetable, 1);
 }
-#endif
 
 #ifdef LAB_PGTBL
 pte_t*
