@@ -64,7 +64,7 @@ Add this before return argc
   }
 
 - Khai báo vnprint ở defs (này có sẵn rồi)
-- Muốn in pagetable: lệnh muốn chạy init --print_pagetable
+- Muốn in pagetable: <lệnh muốn chạy(init, ls, echo, v.v)> --print_pagetable
 
 2. Detect which pages have been accessed 
 - In riscv.h:
